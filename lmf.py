@@ -57,6 +57,7 @@ def workflow_request(workflow, call_type=None, data=None, live=None):
     response = request_func(url_endpoint, json=data, headers=header)
 
     if response.status_code != 200:
+        print(response.text)
         raise Exception("Failed Request!")
 
     return response
@@ -66,7 +67,7 @@ def make_property(cover_image, street_name, city, state, zipcode, live=None):
 
     data = dict()
     data['cover_shot'] = dict()
-    
+
     if type(cover_image) is str:
         encoded_image = load_image_file_encoded(cover_image)
     else:
@@ -83,14 +84,59 @@ def make_property(cover_image, street_name, city, state, zipcode, live=None):
 
     return workflow_request(workflow, "POST", data, live)
 
+
+
+def create_image(product_id, img, live=None):
+    workflow = "new_image"
+    data = {}
+    data['image'] = {}
+
+    if type(img) is str:
+        encoded_image = load_image_file_encoded(img)
+    else:
+        encoded_image = encode_image(img)
+
+    data['image']['filename'] = 'test.jpg'
+    data['image']['contents'] = encoded_image
+    data['image']['private'] = False
+    data['product'] = product_id
+
+    return workflow_request(workflow, "POST", data, live)
+
+def create_product(category, sub_cat, property, property_slug, in_stock, live=None, sub_img = None):
+    workflow = "new_product"
+    data = {}
+
+    # image_id = image_response.json()['response']['id']
+    # print(image_id)
+    data['category'] = category
+    data['sub_category'] = sub_cat
+    #data['main_image'] = image_id
+    data['property'] = property
+    data['property_slug'] = property_slug
+    data['in_stock'] = in_stock
+    return workflow_request(workflow, "POST", data, live)
+
+
+
 if __name__ == '__main__':
-    img = 'input/7.jpg'
-    street = '1611 memorial parkway'
+    img = 'blah.jpg'
+    street = '418 Pinehurst Ave'
     city = 'portland'
     state = 'TX'
     zipcode = "78374"
     live = False
+    #Create a property
     response = make_property(img, street, city, state, zipcode, live=None)
-    print(response)
-    print(response.text)
+    property = response.json()['response']['id']
+    property_slug = response.json()['response']['slug']
 
+    #Create a product without image information
+    product_response = create_product("Indoor Furniture", "Couch", property, property_slug, 12, live=None)
+    product_id = product_response.json()['response']['id']
+
+    #Create image with image content and product id
+    #Update the product with Image object in same API Workflow
+    image_response = create_image(product_id, img, live = None)
+    print(image_response)
+    print(image_response.text)
