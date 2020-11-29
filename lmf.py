@@ -28,10 +28,12 @@ def load_request_function(call_type):
         return requests.get
     return requests.post
 
+
 def load_image_file_encoded(image_path):
     with open(image_path, "rb") as image_file:
         encoded_string = str(base64.b64encode(image_file.read()))[2:-1]
     return encoded_string
+
 
 def encode_image(image):
     buffered = BytesIO()
@@ -39,6 +41,7 @@ def encode_image(image):
     img_str = base64.b64encode(buffered.getvalue())
     encoded_string = str(img_str)[2:-1]
     return encoded_string
+
 
 def workflow_request(workflow, call_type=None, data=None, live=None):
     header = HEADER
@@ -62,6 +65,7 @@ def workflow_request(workflow, call_type=None, data=None, live=None):
 
     return response
 
+
 def make_property(cover_image, street_name, city, state, zipcode, live=None):
     workflow = "new_property"
 
@@ -83,7 +87,6 @@ def make_property(cover_image, street_name, city, state, zipcode, live=None):
     data['zip'] = zipcode
 
     return workflow_request(workflow, "POST", data, live)
-
 
 
 def create_image(product_id, img, live=None):
@@ -118,7 +121,6 @@ def create_product(category, sub_cat, property, property_slug, in_stock, live=No
     return workflow_request(workflow, "POST", data, live)
 
 
-
 if __name__ == '__main__':
     img = 'blah.jpg'
     street = '418 Pinehurst Ave'
@@ -126,13 +128,14 @@ if __name__ == '__main__':
     state = 'TX'
     zipcode = "78374"
     live = False
+
     #Create a property
     response = make_property(img, street, city, state, zipcode, live=None)
-    property = response.json()['response']['id']
+    property_id = response.json()['response']['id']
     property_slug = response.json()['response']['slug']
 
     #Create a product without image information
-    product_response = create_product("Indoor Furniture", "Couch", property, property_slug, 12, live=None)
+    product_response = create_product("Indoor Furniture", "Couch", property_id, property_slug, 12, live=None)
     product_id = product_response.json()['response']['id']
 
     #Create image with image content and product id

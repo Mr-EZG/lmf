@@ -1,3 +1,5 @@
+from PIL import Image
+
 us_state_abbrev = {
 'Alabama': 'AL',
 'Alaska': 'AK',
@@ -81,16 +83,58 @@ def format_input(input):
 			new_address.append(new_part)
 	return " ".join(new_address)
 
-if __name__ == '__main__':
-	si1 = '1611 memorial parkway'
-	si2 = 'portland'
-	sample_inputs = [si1, si2]
-	for si in sample_inputs:
-		print(format_input(si))
-	ss1 = 'TX'
-	ss2 = 'tx'
-	ss3 = 'texas'
-	ss4 = 'Texas'
-	sample_states = [ss1, ss2, ss3, ss4]
-	for ss in sample_states:
-		print(format_state(ss))
+def webp_to_jpg(img_path):
+	im = Image.open(img_path).convert("RGB")
+	return im
+
+def load_jpg(img_path):
+	im = Image.open(img_path)
+	return im
+
+def crop_image(img, x_s, y_s):
+	left = min(x_s)
+	right = max(x_s)
+	top = min(y_s)
+	bottom = max(y_s)
+	new_img = img.crop((left, top, right, bottom))
+	return new_img
+
+def split_address(address):
+	parts = address.split(",")
+	street_address = format_input(parts[0].strip())
+	city = format_input(parts[1].strip())
+	state_and_zipcode = format_input(parts[2].strip())
+	state, zipcode = state_and_zipcode.split(" ")
+	state = format_state(state)
+	return street_address, city, state, zipcode
+
+
+
+# if __name__ == '__main__':
+	# si1 = '1611 memorial parkway'
+	# si2 = 'portland'
+	# sample_inputs = [si1, si2]
+	# for si in sample_inputs:
+	# 	print(format_input(si))
+	# ss1 = 'TX'
+	# ss2 = 'tx'
+	# ss3 = 'texas'
+	# ss4 = 'Texas'
+	# sample_states = [ss1, ss2, ss3, ss4]
+	# for ss in sample_states:
+	# 	print(format_state(ss))
+
+	# Test to check equivalence
+
+	# import lmf
+	# img_path = "1.webp"
+	# im1 = webp_to_jpg(img_path)
+	# b_im = lmf.encode_image(im1)
+	# b_im2 = lmf.load_image_file_encoded("test.jpg")
+	# print(b_im == b_im2)
+
+	# Test address input
+
+	# sample_input = "895 E Broadway, South Boston, MA 02127"
+	# print(split_address(sample_input))
+
