@@ -3,6 +3,7 @@ import formatting as f
 import lmf as l
 import os
 import re
+import json
 
 def cleanse_dir(dir_of_listings):
     for d in os.listdir(dir_of_listings):
@@ -19,7 +20,18 @@ def cleanse_input(input):
     return input
 
 
-def format_inputs(row, dir_of_listings, main_image=None):
+def format_categories(input_category, input_sub_category, live=None):
+    response = l.get_categories().json().get('response')
+    categories = response.get("categories", [])
+    sub_categories = response.get('sub-categories', [])
+    possible_categories = {c['Name']: c['_id'] for c in categories}
+    category, category_name = f.most_similar_output(input_category, possible_categories)
+    possible_sub_categories = {sub_category['Name']: sub_category['_id'] for sub_category in sub_categories if sub_category['Category'] == category}
+    sub_category, sub_category_name = f.most_similar_output(input_sub_category, possible_sub_categories)
+    return category, sub_category
+
+
+def format_inputs(row, dir_of_listings, main_image=None, live=None):
     address = cleanse_input(row["property_address"])
     street_address, city, state, zipcode = f.split_address(address)
     image_dir = os.path.join(dir_of_listings, address)
@@ -37,14 +49,33 @@ def format_inputs(row, dir_of_listings, main_image=None):
     product_name = f.format_input(row["product_name"])
     category = f.format_input(row["category"])
     sub_category = f.format_input(row["sub_category"])
+    category, sub_category = format_categories(category, sub_category, live=live)
     return {"street_address": street_address, "city": city, "state": state,
             "zipcode": zipcode, "img": img, "qty": qty,
             "category": category, "sub_category": sub_category,
             "product_name": product_name}
 
 
+def format_agent_inputs(row, dir_of_listings, live=None):
+    address = cleanse_input(row["property_address"])
+    try:
+        name = f.format_input(row["listing_agents_name"])
+    except:
+        name = None
+    try:
+        firm = f.format_input(row["listing_agents_brokerage"])
+    except:
+        firm = None
+    phone = str(row["listing_agents_phone"])
+    email = row["lisiting_agents_email"]
+    property_id = row["property_id"]
+    d = {"address": address, "name": name, "phone": phone, "email": email, 
+            "property_id": property_id, "firm": firm}
+    return {k: v if type(v) == str else '' for k, v in d.items()}
+
+
 def create_property(row, dir_of_listings, live=None):
-    inputs = format_inputs(row, dir_of_listings, main_image=True)
+    inputs = format_inputs(row, dir_of_listings, main_image=True, live=live)
     response = l.make_property(inputs["img"], inputs["street_address"], 
                     inputs["city"], inputs["state"], inputs["zipcode"], 
                     live)
@@ -53,14 +84,25 @@ def create_property(row, dir_of_listings, live=None):
     return {'id': property_id, 'slug': property_slug}
 
 
-def main(dir_of_listings, columns, name_of_file, live=None):
+def create_agent(row, dir_of_listings, live=None):
+    inputs = format_agent_inputs(row, dir_of_listings, live=live)
+    response = l.create_agent(inputs["name"], inputs["email"], 
+                    inputs["phone"], inputs["firm"], inputs["property_id"], live)
+    agent_id = response.json()['response']['id']
+    return agent_id
+
+
+def main(dir_of_listings, property_columns, product_columns, name_of_file, live=None):
     listings_excel = os.path.join(dir_of_listings, name_of_file)
-    data = pd.read_excel(listings_excel)
-    df = pd.DataFrame(data, columns=columns)
+    data = pd.ExcelFile(listings_excel)
+    products = pd.read_excel(data, "Sheet1")
+    properties = pd.read_excel(data, "Sheet2")
+    df_properties = pd.DataFrame(properties, columns=property_columns)
+    df_products = pd.DataFrame(products, columns=product_columns)
     visited_addresses= dict()
     succesful_properties = 0
 
-    for index, row in df.iterrows():
+    for index, row in df_products.iterrows():
         address = row["property_address"]
         if address not in visited_addresses:
             try:
@@ -73,14 +115,14 @@ def main(dir_of_listings, columns, name_of_file, live=None):
     succesfull_products = 0
     succesfull_images = 0
 
-    for index, row in df.iterrows():
+    for index, row in df_products.iterrows():
         address = row["property_address"]
         if address in visited_addresses:
             try:
-                inputs = format_inputs(row, dir_of_listings, main_image=None)
-                product_response = l.create_product(inputs["category"], inputs["sub_category"],
+                inputs = format_inputs(row, dir_of_listings, main_image=None, live=live)
+                product_response = l.create_product(inputs["product_name"], inputs["category"], inputs["sub_category"],
                                             visited_addresses[address]["id"], visited_addresses[address]["slug"], 
-                                            inputs["qty"], live)
+                                            inputs["qty"], live=live)
                 succesfull_products += 1
                 product_id = product_response.json()['response']['id']
                 image_response = l.create_image(product_id, inputs["img"], live)
@@ -88,23 +130,39 @@ def main(dir_of_listings, columns, name_of_file, live=None):
             except Exception as e:
                 pass
 
-    return succesful_properties, succesfull_products, succesfull_images
+    succesful_agents = 0
+
+    for index, row in df_properties.iterrows():
+        address = row["property_address"]
+        if address in visited_addresses:
+            try:
+                row["property_id"] = visited_addresses[address]["id"]
+                details = create_agent(row, dir_of_listings, live=live)
+                succesful_agents += 1
+            except Exception as e:
+                pass
+
+    return succesful_properties, succesfull_products, succesfull_images, succesful_agents
 
 
 if __name__ == '__main__':
     dir_of_listings = "/Users/ethangarza/Downloads/fixeddata_tab_v23-2.2"
     name_of_file = "fixeddata_tab_v23.2.xlsx"
 
-    columns = ["property_address", "image_name", "product_name", "quantity", 
+    property_columns = ["property_address", "listing_agents_name", "listing_agents_phone", "lisiting_agents_email", "listing_agents_brokerage"]
+
+    products_columns = ["property_address", "image_name", "product_name", "quantity", 
             "category", "sub_category", "top_x", "top_y", "bottom_x", "bottom_y"]
 
     # Only needs to be done once    
     cleanse_dir(dir_of_listings)
 
     # Is the automation / uploading code / process
-    succesful_properties, succesfull_products, succesfull_images= main(dir_of_listings, columns, name_of_file)
+    succesful_properties, succesfull_products, succesfull_images, succesful_agents = main(dir_of_listings, 
+                                                                property_columns, products_columns, name_of_file)
 
     print("Uploading complete")
     print("Properties uploaded:", succesful_properties)
     print("Products uploaded:", succesfull_products)
     print("Images uploaded:", succesfull_images)
+    print("Agents uploaded:", succesful_agents)

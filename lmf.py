@@ -20,6 +20,7 @@ def load_authorization_token():
 
 
 def load_request_function(call_type):
+    call_type = call_type.upper()
     if call_type == "POST":
         return requests.post
     if call_type == "PUT":
@@ -66,7 +67,30 @@ def workflow_request(workflow, call_type=None, data=None, live=None):
     return response
 
 
-def make_property(cover_image, street_name, city, state, zipcode, live=None):
+def object_request(object, call_type=None, data=None, live=None):
+    header = HEADER
+    header['Content-type'] = 'application/json'
+    token = load_authorization_token()
+    header['Authorization'] = 'Bearer {0}'.format(token)
+    if not live:
+        base_url = API_DEV_ENDPOINT
+    else:
+        base_url = API_LIVE_ENDPOINT
+
+    url_endpoint = base_url + "obj/" + object
+
+    request_func = load_request_function(call_type)
+
+    response = request_func(url_endpoint, json=data, headers=header)
+
+    if response.status_code != 200:
+        print(response.text)
+        raise Exception("Failed Request!")
+
+    return response
+
+
+def make_property(cover_image, street_name, city, state, zipcode, agent=None, live=None):
     workflow = "new_property"
 
     data = dict()
@@ -85,6 +109,7 @@ def make_property(cover_image, street_name, city, state, zipcode, live=None):
     data['city'] = city
     data['state'] = state
     data['zip'] = zipcode
+    data['agent'] = agent
 
     return workflow_request(workflow, "POST", data, live)
 
@@ -106,18 +131,36 @@ def create_image(product_id, img, live=None):
 
     return workflow_request(workflow, "POST", data, live)
 
-def create_product(category, sub_cat, property, property_slug, in_stock, live=None, sub_img = None):
+def create_product(name, category, sub_cat, property, property_slug, in_stock, live=None, sub_img = None):
     workflow = "new_product"
     data = {}
 
-    # image_id = image_response.json()['response']['id']
-    # print(image_id)
     data['category'] = category
     data['sub_category'] = sub_cat
-    #data['main_image'] = image_id
     data['property'] = property
     data['property_slug'] = property_slug
     data['in_stock'] = in_stock
+    data['name'] = name
+
+    return workflow_request(workflow, "POST", data, live)
+
+def create_agent(name=None, email=None, phone=None, firm=None, property_id=None, live=None):
+    workflow = "new_agent"
+    data = {}
+
+    data['name'] = name
+    data['email'] = email
+    data['phone'] = phone
+    data['firm'] = firm
+    data['property_id'] = property_id
+
+    return workflow_request(workflow, "POST", data, live)
+
+
+def get_categories(live=None):
+    workflow = "category_details"
+    data = {}
+
     return workflow_request(workflow, "POST", data, live)
 
 
@@ -135,7 +178,7 @@ if __name__ == '__main__':
     property_slug = response.json()['response']['slug']
 
     #Create a product without image information
-    product_response = create_product("Indoor Furniture", "Couch", property_id, property_slug, 12, live=None)
+    product_response = create_product("Product name", "Indoor Furniture", "Couch", property_id, property_slug, 12, live=None)
     product_id = product_response.json()['response']['id']
 
     #Create image with image content and product id

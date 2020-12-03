@@ -99,6 +99,7 @@ def crop_image(img, x_s, y_s):
 	new_img = img.crop((left, top, right, bottom))
 	return new_img
 
+
 def split_address(address):
 	parts = address.split(",")
 	street_address = format_input(parts[0].strip())
@@ -108,6 +109,39 @@ def split_address(address):
 	state = format_state(state)
 	return street_address, city, state, zipcode
 
+
+def vectorize(word):
+	r = dict()
+	for l in word:
+		if l in r:
+			r[l] += 1
+		else:
+			r[l] = 1
+	return r
+
+
+def similarity_score(word1, word2):
+	v1 = vectorize(word1)
+	v2 = vectorize(word2)
+	n = max([len(word1), len(word2)])
+	similarity = 0
+	for k in v1.keys():
+		if k in v2:
+			similarity += min([v1[k], v2[k]])
+	return similarity / n
+
+def most_similar_output(input, dict_comparision_value_to_output):
+	max_similarity = -1
+	similarity_value = None
+	similarity_key = None
+	comp_value = None
+	for comp_value in dict_comparision_value_to_output.keys():
+		similarity = similarity_score(input, comp_value)
+		if similarity > max_similarity:
+			similarity_value = dict_comparision_value_to_output[comp_value]
+			max_similarity = similarity
+			similarity_key = comp_value
+	return similarity_value, comp_value
 
 
 # if __name__ == '__main__':
