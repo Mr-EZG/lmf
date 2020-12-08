@@ -114,18 +114,26 @@ def make_property(cover_image, street_name, city, state, zipcode, agent=None, li
     return workflow_request(workflow, "POST", data, live)
 
 
-def create_image(product_id, img, live=None):
+def create_image(product_id, img, live=None, original_img=None):
     workflow = "new_image"
     data = {}
     data['image'] = {}
+    data['original_image'] = {}
 
     if type(img) is str:
         encoded_image = load_image_file_encoded(img)
     else:
         encoded_image = encode_image(img)
+    if original_img:
+        if type(img) is str:
+            encoded_orig_img = load_image_file_encoded(original_img)
+        else:
+            encoded_orig_img = encode_image(original_img)
 
     data['image']['filename'] = 'test.jpg'
     data['image']['contents'] = encoded_image
+    data['original_image']['filename'] = 'test.jpg'
+    data['original_image']['contents'] = encoded_orig_img
     data['image']['private'] = False
     data['product'] = product_id
 

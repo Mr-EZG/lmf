@@ -41,6 +41,7 @@ def format_inputs(row, dir_of_listings, main_image=None, live=None):
     except:
         image_path = os.path.join(image_dir, row["image_name"]+".jpg")
         img = f.load_jpg(image_path)
+    orig_img = img
     if not main_image:
         x_s = (int(row["top_x"]), int(row["bottom_x"]))
         y_s = (int(row["top_y"]), int(row["bottom_y"]))
@@ -53,7 +54,7 @@ def format_inputs(row, dir_of_listings, main_image=None, live=None):
     return {"street_address": street_address, "city": city, "state": state,
             "zipcode": zipcode, "img": img, "qty": qty,
             "category": category, "sub_category": sub_category,
-            "product_name": product_name}
+            "product_name": product_name, "original_image": orig_img}
 
 
 def format_agent_inputs(row, dir_of_listings, live=None):
@@ -125,7 +126,7 @@ def main(dir_of_listings, property_columns, product_columns, name_of_file, live=
                                             inputs["qty"], live=live)
                 succesfull_products += 1
                 product_id = product_response.json()['response']['id']
-                image_response = l.create_image(product_id, inputs["img"], live)
+                image_response = l.create_image(product_id, inputs["img"], live, original_img=inputs["original_image"])
                 succesfull_images += 1
             except Exception as e:
                 pass
