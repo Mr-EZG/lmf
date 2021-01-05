@@ -1,4 +1,5 @@
 from PIL import Image
+import math
 
 us_state_abbrev = {
 'Alabama': 'AL',
@@ -99,6 +100,43 @@ def crop_image(img, x_s, y_s):
 	new_img = img.crop((left, top, right, bottom))
 	return new_img
 
+def buffer_crop(img, x_s, y_s):
+	left = min(x_s)
+	right = max(x_s)
+	top = min(y_s)
+	bottom = max(y_s)
+	height = abs(y_s[0] - y_s[1])
+	width = abs(x_s[0] - x_s[1])
+
+	height_margin = .9
+	height_margin1 = top / height
+	height_margin2 = (img.size[1] - bottom) / height
+	width_margin = .5
+	width_margin1 = left / width
+	width_margin2 = (img.size[0] - right) / width
+
+	height_margin = min(height_margin, height_margin1, height_margin2)
+	width_margin = min(width_margin, width_margin1, width_margin2)
+
+	old_pixels = img.load()
+	new_img_width = math.floor(2*width*width_margin + width)
+	new_img_height = math.floor(2*height*height_margin + height)
+	new_image = Image.new('RGB', (new_img_width, new_img_height), "white")
+	new_pixels = new_image.load()
+	for i in range(new_img_width):
+		for j in range(new_img_height):
+			x_coord = math.floor(left - width*width_margin) + i
+			y_coord = math.floor(top - height*height_margin) + j
+			pixel_value = None
+			if 0 <= x_coord < img.size[0]:
+				if 0 <= y_coord < img.size[1]:
+					pixel_value = old_pixels[x_coord, y_coord]
+			if pixel_value:
+				new_pixels[i, j] = pixel_value
+	return new_image 
+
+
+
 
 def split_address(address):
 	parts = address.split(",")
@@ -141,6 +179,9 @@ def most_similar_output(input, dict_comparision_value_to_output):
 			similarity_value = dict_comparision_value_to_output[comp_value]
 			max_similarity = similarity
 			similarity_key = comp_value
+	# print("similarity_value:", similarity_value)
+	# print("max_similarity:", max_similarity)
+	# print("similarity_key:", similarity_key)
 	return similarity_value, comp_value
 
 

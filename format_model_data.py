@@ -1,6 +1,7 @@
 import pandas as pd
 import formatting as f
 import lmf as l
+import data_utils as utils
 import os
 import re
 import json
@@ -25,22 +26,14 @@ def cleanse_phone(input):
     return input
 
 
-def format_categories(input_sub_category, live=None):
-    response = l.get_categories(live).json().get('response')
+def format_categories(input_category, input_sub_category, live=None):
+    response = l.get_categories().json().get('response')
     categories = response.get("categories", [])
     sub_categories = response.get('sub-categories', [])
     possible_categories = {c['Name']: c['_id'] for c in categories}
-    # category, category_name = f.most_similar_output(input_category, possible_categories)
-    possible_sub_categories = {sub_category['Name']: sub_category['_id'] for sub_category in sub_categories}
-    # print("sub:", sub_categories)
-    # print("---")
-    # for sub in sub_categories:
-    #     if 'Category' not in sub:
-    #         print(sub)
-    sub_categories_to_categories_name = {sub_category['Name']: sub_category['Category'] for sub_category in sub_categories}
-    # print("Possible Sub Categories:", possible_sub_categories)
+    category, category_name = f.most_similar_output(input_category, possible_categories)
+    possible_sub_categories = {sub_category['Name']: sub_category['_id'] for sub_category in sub_categories if sub_category['Category'] == category}
     sub_category, sub_category_name = f.most_similar_output(input_sub_category, possible_sub_categories)
-    category = sub_categories_to_categories_name[sub_category_name]
     return category, sub_category
 
 
@@ -61,36 +54,19 @@ def format_inputs(row, dir_of_listings, main_image=None, live=None):
         img = f.buffer_crop(img, x_s, y_s)
         # img = f.crop_image(img, x_s, y_s)
     qty = int(row["quantity"])
+    product_name = f.format_input(row["product_name"])
+    category = f.format_input(row["category"])
     sub_category = f.format_input(row["sub_category"])
-    product_name = f.format_input(row.get("product_name", sub_category))
-    category, sub_category = format_categories(sub_category, live=live)
+    category, sub_category = format_categories(category, sub_category, live=live)
     return {"street_address": street_address, "city": city, "state": state,
             "zipcode": zipcode, "img": img, "qty": qty,
             "category": category, "sub_category": sub_category,
             "product_name": product_name, "original_image": orig_img}
 
 
-def format_agent_inputs(row, dir_of_listings, live=None):
-    address = cleanse_input(row["property_address"])
-    try:
-        name = f.format_input(row["listing_agents_name"])
-    except:
-        name = None
-    try:
-        firm = f.format_input(row["listing_agents_brokerage"])
-    except:
-        firm = None
-    phone = str(cleanse_phone(str(row["listing_agents_phone"])))
-    email = row["lisiting_agents_email"]
-    property_id = row["property_id"]
-    d = {"address": address, "name": name, "phone": phone, "email": email, 
-            "property_id": property_id, "firm": firm}
-    return {k: v if type(v) == str else '' for k, v in d.items()}
-
-
 def create_property(row, dir_of_listings, live=None):
     inputs = format_inputs(row, dir_of_listings, main_image=True, live=live)
-    # print(inputs)
+    print(inputs)
     response = l.make_property(inputs["img"], inputs["street_address"], 
                     inputs["city"], inputs["state"], inputs["zipcode"], 
                     live)
@@ -99,21 +75,13 @@ def create_property(row, dir_of_listings, live=None):
     return {'id': property_id, 'slug': property_slug}
 
 
-def create_agent(row, dir_of_listings, live=None):
-    inputs = format_agent_inputs(row, dir_of_listings, live=live)
-    response = l.create_agent(inputs["name"], inputs["email"], 
-                    inputs["phone"], inputs["firm"], inputs["property_id"], live)
-    agent_id = response.json()['response']['id']
-    return agent_id
-
-
 def main(dir_of_listings, property_columns, product_columns, name_of_file, live=None):
     listings_excel = os.path.join(dir_of_listings, name_of_file)
     data = pd.ExcelFile(listings_excel)
-    # products = pd.read_excel(data, "Sheet1")
-    # properties = pd.read_excel(data, "Sheet2")
-    products = pd.read_excel(data, "Main (Classification&Location)")
-    properties = pd.read_excel(data, "Realtor")
+    products = pd.read_excel(data, "Sheet1")
+    properties = pd.read_excel(data, "Sheet2")
+    # products = pd.read_excel(data, "Main (Classification&Location)")
+    # properties = pd.read_excel(data, "Realtor")
     df_properties = pd.DataFrame(properties, columns=property_columns)
     df_products = pd.DataFrame(products, columns=product_columns)
     visited_addresses= dict()
@@ -126,10 +94,8 @@ def main(dir_of_listings, property_columns, product_columns, name_of_file, live=
                 details = create_property(row, dir_of_listings,live)
                 visited_addresses[address] = details
                 succesful_properties += 1
+                break
             except Exception as e:
-                # print("OOf")
-                # print(str(e))
-                # raise Exception("Ye")
                 pass
 
     succesfull_products = 0
@@ -168,8 +134,8 @@ def main(dir_of_listings, property_columns, product_columns, name_of_file, live=
 
 
 if __name__ == '__main__':
-    dir_of_listings = "/Users/ethangarza/Downloads/LMFData_Massachusetts_29_12_20"
-    name_of_file = "LMFData_Massachusetts_29_12_2020.xlsx"
+    dir_of_listings = "/Users/ethangarza/Downloads/fixeddata_tab_v23-2.2"
+    name_of_file = "fixeddata_tab_v23.2.xlsx"
 
     # property_columns = ["property_address", "listing_agents_name", "listing_agents_phone", "lisiting_agents_email", "listing_agents_brokerage"]
 
@@ -179,13 +145,10 @@ if __name__ == '__main__':
     # dir_of_listings = "/Users/ethangarza/Downloads/LMF 8_12_2020"
     # name_of_file = "Master Excel Sheet (1).xlsx"
 
-    products_columns = ["property_address", "image_name", "quantity", "sub_category", 
-                        "top_x", "top_y", "bottom_x", "bottom_y", "costestimate",
-                        "costestimate_1", "date"]
+    products_columns = ["property_address", "image_name", "quantity", "category", "sub_category", 
+                        "product_name", "top_x", "top_y", "bottom_x", "bottom_y", "cost"]
 
-    property_columns =["S.No.", "property_address", "date_of_extraction",
-            "cost_of_property", "URL", "listing_agents_name", "listing_agents_phone",
-            "lisiting_agents_email", "listing_agents_brokerage"]
+    property_columns =["property_address", "URL", "listing_agents_name", "listing_agents_phone", "lisiting_agents_email", "listing_agents_brokerage"]
 
     # dir_of_listings = "/Users/ethangarza/Downloads/lmf tech"
     # name_of_file = "Master Excel Sheet lmf tech 123.xlsx" # Décor
