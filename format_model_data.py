@@ -134,8 +134,17 @@ def main(dir_of_listings, property_columns, product_columns, name_of_file, live=
 
 
 if __name__ == '__main__':
-    dir_of_listings = "/Users/namitagrawal/Downloads/fixeddata_tab_v23.2"
-    name_of_file = "fixeddata_tab_v23.2.xlsx"
+
+    import argparse
+
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument('--dir_of_listings')
+    parser.add_argument('--name_of_file')
+    args = parser.parse_args()
+
+    dir_of_listings = args.dir_of_listings
+    name_of_file = args.name_of_file
 
     # property_columns = ["property_address", "listing_agents_name", "listing_agents_phone", "lisiting_agents_email", "listing_agents_brokerage"]
 
