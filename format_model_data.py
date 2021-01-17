@@ -48,7 +48,7 @@ def format_inputs(row, dir_of_listings, main_image=None, live=None):
         image_path = os.path.join(image_dir, row["image_name"]+".jpg")
         img = f.load_jpg(image_path)
     orig_img = img
-    #orig_img.save("/Users/namitagrawal/Desktop/lmf/images/"+str(row['image_name'])+".jpg", "JPEG")
+    orig_img.save("../drive/MyDrive/LMFDataset/images/"+str(row['image_name'])+".jpg", "JPEG")
     if not main_image:
         x_s = (int(row["top_x"]), int(row["bottom_x"]))
         y_s = (int(row["top_y"]), int(row["bottom_y"]))
@@ -79,12 +79,15 @@ def create_property(row, dir_of_listings, live=None):
 def main(dir_of_listings, property_columns, product_columns, name_of_file, live=None):
     listings_excel = os.path.join(dir_of_listings, name_of_file)
     # data = pd.ExcelFile(listings_excel)
-    products = pd.read_excel(listings_excel, "Sheet1", engine="openpyxl")
-    properties = pd.read_excel(listings_excel, "Sheet2", engine="openpyxl")
+    products = pd.read_excel(name_of_file, "Main (Classification&Location)" )
+    df_master = pd.read_excel("../drive/MyDrive/LMFDataset/LMFDataMaster.xlsx", "Main (Classification&Location)")
+    # properties = pd.read_excel(name_of_file, "Sheet2")
     # products = pd.read_excel(data, "Main (Classification&Location)")
     # properties = pd.read_excel(data, "Realtor")
-    df_properties = pd.DataFrame(properties, columns=property_columns)
+    # df_properties = pd.DataFrame(properties, columns=property_columns)
     df_products = pd.DataFrame(products, columns=product_columns)
+    df_master = df_master.append(df_products, ignore_index=True) 
+    df_master.to_excel("../drive/MyDrive/LMFDataset/LMFDataMaster.xlsx", sheet_name="Main (Classification&Location)")
     visited_addresses= dict()
     succesful_properties = 0
 
@@ -116,7 +119,7 @@ def main(dir_of_listings, property_columns, product_columns, name_of_file, live=
         except Exception as e:
             # print("Yikes:", str(e))
             pass
-
+    
     succesful_agents = 0
 
     # for index, row in df_properties.iterrows():
@@ -145,7 +148,7 @@ if __name__ == '__main__':
 
     dir_of_listings = args.dir_of_listings
     name_of_file = args.name_of_file
-    print(dir_of_listings)
+    print(name_of_file)
 
     # property_columns = ["property_address", "listing_agents_name", "listing_agents_phone", "lisiting_agents_email", "listing_agents_brokerage"]
 
