@@ -48,7 +48,7 @@ def format_inputs(row, dir_of_listings, main_image=None, live=None):
         image_path = os.path.join(image_dir, row["image_name"]+".jpg")
         img = f.load_jpg(image_path)
     orig_img = img
-    orig_img.save("/Users/namitagrawal/Desktop/lmf/images/"+str(row['image_name'])+".jpg", "JPEG")
+    #orig_img.save("/Users/namitagrawal/Desktop/lmf/images/"+str(row['image_name'])+".jpg", "JPEG")
     if not main_image:
         x_s = (int(row["top_x"]), int(row["bottom_x"]))
         y_s = (int(row["top_y"]), int(row["bottom_y"]))
@@ -141,10 +141,11 @@ if __name__ == '__main__':
 
     parser.add_argument('--dir_of_listings')
     parser.add_argument('--name_of_file')
-    args = parser.parse_args()
+    args, unknown = parser.parse_known_args()
 
     dir_of_listings = args.dir_of_listings
     name_of_file = args.name_of_file
+    print(dir_of_listings)
 
     # property_columns = ["property_address", "listing_agents_name", "listing_agents_phone", "lisiting_agents_email", "listing_agents_brokerage"]
 
@@ -166,7 +167,7 @@ if __name__ == '__main__':
     #                     "product_name", "top_x", "top_y", "bottom_x", "bottom_y", "cost"]
 
     # Only needs to be done once
-    cleanse_dir(dir_of_listings)
+    #cleanse_dir(dir_of_listings)
 
     # Is the automation / uploading code / process
     succesful_properties, succesfull_products, succesfull_images, succesful_agents = main(dir_of_listings,
